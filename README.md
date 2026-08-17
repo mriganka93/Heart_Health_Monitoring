@@ -30,6 +30,21 @@ The application provides a clean desktop interface with:
 * Data export functionality
 * Status messages for successful and failed operations
 
+### 📸 Screenshots
+
+#### Main Dashboard
+
+<p align="center">
+  <img src="Images/dashboard.png" alt="Heart Health Monitor Dashboard" width="800">
+</p>
+
+#### Health Monitoring
+
+<p align="center">
+  <img src="Images/monitoring.png" alt="Heart Health Monitor Health Monitoring" width="800">
+</p>
+
+
 ## 🛠️ Technologies Used
 
 | Technology    | Purpose                   |
@@ -185,6 +200,23 @@ The repository's `.gitignore` excludes database and CSV files from Git.
 The information recorded by the application should not be used as a substitute for diagnosis, treatment, or advice from a qualified healthcare professional.
 
 If you have concerns about your blood pressure, heart rate, or other health measurements, consult an appropriate healthcare professional.
+
+
+
+### One more improvement: add executable usage
+
+Since you now have both executables in the repository, I'd add a section before **Installation**:
+
+```markdown
+## 📦 Pre-built Executables
+
+Pre-built executables are included for users who do not want to install Python or the project dependencies.
+
+### Linux
+
+```bash
+./HeartHealthMonitor
+
 
 
 ## 👨‍💻 Author

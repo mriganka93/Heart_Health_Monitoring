@@ -1,0 +1,84 @@
+name: Build Heart Health Monitor
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v4
+
+      - name: Show commit being built
+        run: git log -1 --oneline
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Windows EXE
+        run: |
+          pyinstaller --clean --onefile --windowed --name HeartHealthMonitor bp_monitor.py
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: HeartHealthMonitor-Windows-New
+          path: dist/HeartHealthMonitor.exe
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux Executable
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v4
+
+      - name: Show commit being built
+        run: git log -1 --oneline
+
+      - name: Install Tkinter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Linux executable
+        run: |
+          pyinstaller --clean --onefile --windowed --name HeartHealthMonitor bp_monitor.py
+
+      - name: Make executable runnable
+        run: |
+          chmod +x dist/HeartHealthMonitor
+
+      - name: Upload Linux executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: HeartHealthMonitor-Linux-New
+          path: dist/HeartHealthMonitor
+          if-no-files-found: error
+

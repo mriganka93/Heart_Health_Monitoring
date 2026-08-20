@@ -1,4 +1,4 @@
-# ❤️ Heart Health Monitor version 1.0
+# ❤️ Heart Health Monitor v0.1.0-beta
 
 A desktop-based **Heart Health Monitor** built with Python, CustomTkinter, and SQLite. The application allows users to record and manage daily health information such as blood pressure, heart rate, exercise, sleep, stress, and meditation.
 
@@ -201,21 +201,6 @@ The information recorded by the application should not be used as a substitute f
 
 If you have concerns about your blood pressure, heart rate, or other health measurements, consult an appropriate healthcare professional.
 
-
-
-### One more improvement: add executable usage
-
-Since you now have both executables in the repository, I'd add a section before **Installation**:
-
-```markdown
-## 📦 Pre-built Executables
-
-Pre-built executables are included for users who do not want to install Python or the project dependencies.
-
-### Linux
-
-```bash
-./HeartHealthMonitor
 
 
 

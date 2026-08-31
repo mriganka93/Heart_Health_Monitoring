@@ -1,24 +1,12 @@
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-
+from tkinter import ttk, messagebox
 import sqlite3
 
 from datetime import datetime, timedelta
 
-from openpyxl import Workbook
-from openpyxl.styles import PatternFill, Font, Alignment
-
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import landscape, A4
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Table,
-    TableStyle,
-    Paragraph,
-    Spacer
-)
-from reportlab.lib.styles import getSampleStyleSheet
+from export import export_pdf, export_excel
+from export.report_period import ReportPeriodSelector
 
 
 # ============================================================
@@ -81,6 +69,7 @@ COLORS = {
 # ============================================================
 
 def create_database():
+    """Create the database and apply required migrations."""
 
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -104,13 +93,11 @@ def create_database():
         )
     """)
 
-    # ========================================================
+    # --------------------------------------------------------
     # DATABASE MIGRATION
-    # ========================================================
+    # --------------------------------------------------------
 
-    cursor.execute("""
-        PRAGMA table_info(health_records)
-    """)
+    cursor.execute("PRAGMA table_info(health_records)")
 
     columns = [
         row[1]
@@ -170,9 +157,7 @@ def create_database():
     }
 
     for column_name, sql in migrations.items():
-
         if column_name not in columns:
-
             cursor.execute(sql)
 
     conn.commit()
@@ -186,7 +171,6 @@ def create_database():
 class HealthMonitor(ctk.CTk):
 
     def __init__(self):
-
         super().__init__()
 
         # ----------------------------------------------------
@@ -214,12 +198,11 @@ class HealthMonitor(ctk.CTk):
             pass
 
         # ====================================================
-        # VARIABLES
+        # HEALTH VARIABLES
         # ====================================================
 
         self.systolic_var = tk.StringVar()
         self.diastolic_var = tk.StringVar()
-
         self.heart_rate_var = tk.StringVar()
 
         self.exercise_var = tk.StringVar()
@@ -273,15 +256,25 @@ class HealthMonitor(ctk.CTk):
         ]
 
         # ====================================================
+        # REPORT PERIOD
+        # ====================================================
+
+        self.report_period = "None"
+
+        self.custom_start_date = None
+        self.custom_end_date = None
+
+        self.report_period_var = tk.StringVar(
+            value="Report Duration"
+        )
+
+        # ====================================================
         # BUILD UI
         # ====================================================
 
         self.create_header()
-
         self.create_scroll_area()
-
         self.create_health_entry_card()
-
         self.create_recent_data_card()
 
         # ====================================================
@@ -393,7 +386,10 @@ class HealthMonitor(ctk.CTk):
 
         subtitle = ctk.CTkLabel(
             title_frame,
-            text="Personal Heart Health Tracking Developed and Build By @Mriganka93",
+            text=(
+                "Personal Heart Health Tracking "
+                "Developed and Built By @Mriganka93"
+            ),
             text_color="#94A3B8",
             font=(
                 "Segoe UI",
@@ -696,10 +692,6 @@ class HealthMonitor(ctk.CTk):
             pady=(15, 10)
         )
 
-        # ----------------------------------------------------
-        # STRESS
-        # ----------------------------------------------------
-
         stress_box = ctk.CTkCheckBox(
             wellness,
             text="Stress",
@@ -724,10 +716,6 @@ class HealthMonitor(ctk.CTk):
             padx=18,
             pady=(2, 19)
         )
-
-        # ----------------------------------------------------
-        # MEDITATION
-        # ----------------------------------------------------
 
         meditation_box = ctk.CTkCheckBox(
             wellness,
@@ -805,10 +793,6 @@ class HealthMonitor(ctk.CTk):
             pady=(15, 10)
         )
 
-        # ----------------------------------------------------
-        # HEART MEDICATION CHECKBOX
-        # ----------------------------------------------------
-
         heart_med_box = ctk.CTkCheckBox(
             medication,
             text="Heart Meds",
@@ -834,10 +818,6 @@ class HealthMonitor(ctk.CTk):
             pady=(2, 8)
         )
 
-        # ----------------------------------------------------
-        # BP MEDICATION CHECKBOX
-        # ----------------------------------------------------
-
         bp_med_box = ctk.CTkCheckBox(
             medication,
             text="BP Meds",
@@ -862,10 +842,6 @@ class HealthMonitor(ctk.CTk):
             padx=18,
             pady=(2, 8)
         )
-
-        # ----------------------------------------------------
-        # HEART MED NAME
-        # ----------------------------------------------------
 
         heart_name_label = ctk.CTkLabel(
             medication,
@@ -910,10 +886,6 @@ class HealthMonitor(ctk.CTk):
             padx=18,
             pady=(0, 15)
         )
-
-        # ----------------------------------------------------
-        # BP MED NAME
-        # ----------------------------------------------------
 
         bp_name_label = ctk.CTkLabel(
             medication,
@@ -1006,7 +978,10 @@ class HealthMonitor(ctk.CTk):
 
         note_description = ctk.CTkLabel(
             note_frame,
-            text="How did you feel today? Add any notes you want to remember.",
+            text=(
+                "How did you feel today? "
+                "Add any notes you want to remember."
+            ),
             text_color=COLORS["muted"],
             font=(
                 "Segoe UI",
@@ -1061,10 +1036,6 @@ class HealthMonitor(ctk.CTk):
             pady=(22, 10)
         )
 
-        # ----------------------------------------------------
-        # SAVE
-        # ----------------------------------------------------
-
         save_button = ctk.CTkButton(
             buttons,
             text="Save Health Data",
@@ -1084,10 +1055,6 @@ class HealthMonitor(ctk.CTk):
         save_button.pack(
             side="right"
         )
-
-        # ----------------------------------------------------
-        # CLEAR
-        # ----------------------------------------------------
 
         clear_button = ctk.CTkButton(
             buttons,
@@ -1110,10 +1077,6 @@ class HealthMonitor(ctk.CTk):
             padx=10
         )
 
-        # ----------------------------------------------------
-        # DELETE
-        # ----------------------------------------------------
-
         delete_button = ctk.CTkButton(
             buttons,
             text="Delete Last",
@@ -1134,9 +1097,9 @@ class HealthMonitor(ctk.CTk):
             side="right"
         )
 
-        # ----------------------------------------------------
+        # ====================================================
         # STATUS
-        # ----------------------------------------------------
+        # ====================================================
 
         self.status_frame = ctk.CTkFrame(
             card,
@@ -1338,10 +1301,6 @@ class HealthMonitor(ctk.CTk):
             side="left",
             padx=14
         )
-
-        # ----------------------------------------------------
-        # VIEW DATA
-        # ----------------------------------------------------
 
         view_button = ctk.CTkButton(
             header,
@@ -1546,9 +1505,13 @@ class HealthMonitor(ctk.CTk):
             pady=(20, 30)
         )
 
+        # ----------------------------------------------------
+        # EXPORT LABEL
+        # ----------------------------------------------------
+
         export_info = ctk.CTkLabel(
             export_frame,
-            text="Export selected health data:",
+            text="Export health report:",
             text_color=COLORS["muted"],
             font=(
                 "Segoe UI",
@@ -1557,15 +1520,53 @@ class HealthMonitor(ctk.CTk):
         )
 
         export_info.grid(
-           row=0,
-           column=0,
-           sticky="w",
-           padx=(300, 20),
-           pady=15
+            row=0,
+            column=0,
+            sticky="w",
+            padx=(20, 15),
+            pady=15
         )
 
         # ----------------------------------------------------
-        # FORMAT
+        # REPORT DURATION DROPDOWN
+        # ----------------------------------------------------
+
+        self.period_button = ctk.CTkOptionMenu(
+            export_frame,
+            variable=self.report_period_var,
+            values=[
+                "Report Duration",
+                "1 Week",
+                "1 Month",
+                "All",
+                "Custom"
+            ],
+            command=self.report_period_selected,
+            width=160,
+            height=40,
+            corner_radius=8,
+            fg_color="#64748B",
+            button_color="#64748B",
+            button_hover_color="#475569",
+            dropdown_fg_color="white",
+            dropdown_hover_color="#DBEAFE",
+            text_color="white",
+            font=(
+                "Segoe UI",
+                13,
+                "bold"
+            )
+        )
+
+        self.period_button.grid(
+            row=0,
+            column=1,
+            padx=5,
+            pady=10
+        )
+
+        # ----------------------------------------------------
+        # FORMAT LABEL
         # ----------------------------------------------------
 
         format_label = ctk.CTkLabel(
@@ -1581,10 +1582,14 @@ class HealthMonitor(ctk.CTk):
 
         format_label.grid(
             row=0,
-            column=1,
-            padx=(10, 5),
+            column=2,
+            padx=(12, 5),
             pady=10
         )
+
+        # ----------------------------------------------------
+        # FORMAT MENU
+        # ----------------------------------------------------
 
         format_menu = ctk.CTkOptionMenu(
             export_frame,
@@ -1593,7 +1598,7 @@ class HealthMonitor(ctk.CTk):
                 "PDF",
                 "Excel"
             ],
-            width=110,
+            width=105,
             height=40,
             corner_radius=8,
             fg_color=COLORS["blue"],
@@ -1611,13 +1616,13 @@ class HealthMonitor(ctk.CTk):
 
         format_menu.grid(
             row=0,
-            column=2,
+            column=3,
             padx=5,
             pady=10
         )
 
         # ----------------------------------------------------
-        # SELECT COLUMNS
+        # SELECT DATA COLUMNS
         # ----------------------------------------------------
 
         select_columns_button = ctk.CTkButton(
@@ -1638,13 +1643,13 @@ class HealthMonitor(ctk.CTk):
 
         select_columns_button.grid(
             row=0,
-            column=3,
+            column=4,
             padx=5,
             pady=10
         )
 
         # ----------------------------------------------------
-        # EXPORT
+        # EXPORT BUTTON
         # ----------------------------------------------------
 
         export_button = ctk.CTkButton(
@@ -1665,9 +1670,284 @@ class HealthMonitor(ctk.CTk):
 
         export_button.grid(
             row=0,
-            column=4,
-            padx=(5, 12),
+            column=5,
+            padx=(5, 20),
             pady=10
+        )
+
+    # ========================================================
+    # REPORT PERIOD DROPDOWN SELECTION
+    # ========================================================
+
+    def report_period_selected(self, selected_period):
+
+        # ----------------------------------------------------
+        # IGNORE PLACEHOLDER
+        # ----------------------------------------------------
+
+        if selected_period == "Report Duration":
+
+            return
+
+        # ----------------------------------------------------
+        # CUSTOM DATE RANGE
+        # ----------------------------------------------------
+
+        if selected_period == "Custom":
+
+            try:
+
+                ReportPeriodSelector(
+                    self,
+                    self.set_report_period
+                )
+
+            except Exception as error:
+
+                print(
+                    "Report period error:",
+                    error
+                )
+
+                self.show_error(
+                    "Unable to open the custom date selector."
+                )
+
+            return
+
+        # ----------------------------------------------------
+        # STANDARD PERIOD
+        # ----------------------------------------------------
+
+        self.set_report_period(
+            selected_period
+        )
+
+    # ========================================================
+    # SET REPORT PERIOD
+    # ========================================================
+
+    def set_report_period(
+        self,
+        period,
+        start_date=None,
+        end_date=None
+    ):
+        """
+        Store the selected report period.
+
+        Supported periods:
+            1 Week
+            1 Month
+            All
+            Custom
+        """
+
+        self.report_period = period
+
+        # ----------------------------------------------------
+        # STORE START DATE
+        # ----------------------------------------------------
+
+        if start_date is not None:
+
+            if hasattr(start_date, "strftime"):
+
+                self.custom_start_date = (
+                    start_date.strftime("%Y-%m-%d")
+                )
+
+            else:
+
+                self.custom_start_date = str(
+                    start_date
+                )
+
+        else:
+
+            self.custom_start_date = None
+
+        # ----------------------------------------------------
+        # STORE END DATE
+        # ----------------------------------------------------
+
+        if end_date is not None:
+
+            if hasattr(end_date, "strftime"):
+
+                self.custom_end_date = (
+                    end_date.strftime("%Y-%m-%d")
+                )
+
+            else:
+
+                self.custom_end_date = str(
+                    end_date
+                )
+
+        else:
+
+            self.custom_end_date = None
+
+        # ----------------------------------------------------
+        # UPDATE DROPDOWN
+        # ----------------------------------------------------
+
+        self.report_period_var.set(
+            period
+        )
+
+        # ----------------------------------------------------
+        # STATUS
+        # ----------------------------------------------------
+
+        if period == "Custom":
+
+            if (
+                self.custom_start_date
+                and self.custom_end_date
+            ):
+
+                try:
+
+                    start_display = datetime.strptime(
+                        self.custom_start_date,
+                        "%Y-%m-%d"
+                    ).strftime("%d %b %Y")
+
+                    end_display = datetime.strptime(
+                        self.custom_end_date,
+                        "%Y-%m-%d"
+                    ).strftime("%d %b %Y")
+
+                    self.status_label.configure(
+                        text=(
+                            "✓  Custom report period: "
+                            f"{start_display} - {end_display}"
+                        ),
+                        text_color=COLORS["success_text"]
+                    )
+
+                except ValueError:
+
+                    self.status_label.configure(
+                        text="✓  Custom report period selected.",
+                        text_color=COLORS["success_text"]
+                    )
+
+            else:
+
+                self.status_label.configure(
+                    text="✓  Custom report period selected.",
+                    text_color=COLORS["success_text"]
+                )
+
+        else:
+
+            self.status_label.configure(
+                text=f"✓  Report period set to {period}.",
+                text_color=COLORS["success_text"]
+            )
+
+    # ========================================================
+    # GET REPORT DATE RANGE
+    # ========================================================
+
+    def get_report_date_range(self):
+
+        now = datetime.now()
+
+        # ----------------------------------------------------
+        # 1 WEEK
+        # ----------------------------------------------------
+
+        if self.report_period == "1 Week":
+
+            start_datetime = now - timedelta(
+                days=6
+            )
+
+            end_datetime = now
+
+        # ----------------------------------------------------
+        # 1 MONTH
+        # ----------------------------------------------------
+
+        elif self.report_period == "1 Month":
+
+            start_datetime = now - timedelta(
+                days=29
+            )
+
+            end_datetime = now
+
+        # ----------------------------------------------------
+        # ALL
+        # ----------------------------------------------------
+
+        elif self.report_period == "All":
+
+            return None, None
+
+        # ----------------------------------------------------
+        # CUSTOM
+        # ----------------------------------------------------
+
+        elif self.report_period == "Custom":
+
+            if (
+                not self.custom_start_date
+                or not self.custom_end_date
+            ):
+
+                return None, None
+
+            try:
+
+                start_date = datetime.strptime(
+                    self.custom_start_date,
+                    "%Y-%m-%d"
+                ).date()
+
+                end_date = datetime.strptime(
+                    self.custom_end_date,
+                    "%Y-%m-%d"
+                ).date()
+
+            except ValueError:
+
+                return None, None
+
+            # End date cannot be before start date.
+            if end_date < start_date:
+
+                return None, None
+
+            start_datetime = datetime.combine(
+                start_date,
+                datetime.min.time()
+            )
+
+            end_datetime = datetime.combine(
+                end_date,
+                datetime.max.time()
+            )
+
+        # ----------------------------------------------------
+        # NO PERIOD
+        # ----------------------------------------------------
+
+        else:
+
+            return None, None
+
+        return (
+            start_datetime.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            end_datetime.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
         )
 
     # ========================================================
@@ -1676,14 +1956,12 @@ class HealthMonitor(ctk.CTk):
 
     def save_record(self):
 
-        # ----------------------------------------------------
-        # SYSTOLIC
-        # ----------------------------------------------------
-
         try:
+
             systolic = int(
                 self.systolic_var.get()
             )
+
         except ValueError:
 
             self.show_error(
@@ -1692,14 +1970,12 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        # ----------------------------------------------------
-        # DIASTOLIC
-        # ----------------------------------------------------
-
         try:
+
             diastolic = int(
                 self.diastolic_var.get()
             )
+
         except ValueError:
 
             self.show_error(
@@ -1708,14 +1984,12 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        # ----------------------------------------------------
-        # HEART RATE
-        # ----------------------------------------------------
-
         try:
+
             heart_rate = int(
                 self.heart_rate_var.get()
             )
+
         except ValueError:
 
             self.show_error(
@@ -1724,14 +1998,12 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        # ----------------------------------------------------
-        # EXERCISE
-        # ----------------------------------------------------
-
         try:
+
             exercise = float(
                 self.exercise_var.get()
             )
+
         except ValueError:
 
             self.show_error(
@@ -1740,14 +2012,12 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        # ----------------------------------------------------
-        # SLEEP
-        # ----------------------------------------------------
-
         try:
+
             sleep = float(
                 self.sleep_var.get()
             )
+
         except ValueError:
 
             self.show_error(
@@ -1809,7 +2079,7 @@ class HealthMonitor(ctk.CTk):
             return
 
         # ----------------------------------------------------
-        # FLAGS
+        # BOOLEAN VALUES
         # ----------------------------------------------------
 
         stress = int(
@@ -1829,7 +2099,7 @@ class HealthMonitor(ctk.CTk):
         )
 
         # ----------------------------------------------------
-        # OPTIONAL MEDICATION NAMES
+        # TEXT VALUES
         # ----------------------------------------------------
 
         heart_med_name = (
@@ -1840,10 +2110,6 @@ class HealthMonitor(ctk.CTk):
             self.bp_med_name_var.get().strip()
         )
 
-        # ----------------------------------------------------
-        # DAILY NOTE
-        # ----------------------------------------------------
-
         daily_note = (
             self.daily_note_text.get(
                 "1.0",
@@ -1852,7 +2118,7 @@ class HealthMonitor(ctk.CTk):
         )
 
         # ----------------------------------------------------
-        # SAVE
+        # SAVE TO DATABASE
         # ----------------------------------------------------
 
         try:
@@ -1916,10 +2182,6 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        # ----------------------------------------------------
-        # SUCCESS
-        # ----------------------------------------------------
-
         self.clear_form(
             update_status=False
         )
@@ -1934,52 +2196,75 @@ class HealthMonitor(ctk.CTk):
 
     def view_data(self):
 
-        conn = sqlite3.connect(
-            DB_NAME
-        )
+        try:
 
-        cursor = conn.cursor()
+            conn = sqlite3.connect(
+                DB_NAME
+            )
 
-        start_date = (
-            datetime.now().date()
-            - timedelta(days=4)
-        )
+            cursor = conn.cursor()
 
-        start_datetime = datetime.combine(
-            start_date,
-            datetime.min.time()
-        ).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+            start_date = (
+                datetime.now().date()
+                - timedelta(days=4)
+            )
 
-        cursor.execute("""
-            SELECT
-                timestamp,
-                systolic,
-                diastolic,
-                heart_rate,
-                stress,
-                meditation,
-                heart_medication,
-                bp_medication,
-                exercise_duration,
-                sleep_duration
-            FROM health_records
-            WHERE timestamp >= ?
-            ORDER BY timestamp DESC
-        """, (
-            start_datetime,
-        ))
+            start_datetime = datetime.combine(
+                start_date,
+                datetime.min.time()
+            ).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
 
-        records = cursor.fetchall()
+            cursor.execute("""
+                SELECT
+                    timestamp,
+                    systolic,
+                    diastolic,
+                    heart_rate,
+                    stress,
+                    meditation,
+                    heart_medication,
+                    bp_medication,
+                    exercise_duration,
+                    sleep_duration
+                FROM health_records
+                WHERE timestamp >= ?
+                ORDER BY timestamp DESC
+            """, (
+                start_datetime,
+            ))
 
-        conn.close()
+            records = cursor.fetchall()
+
+            conn.close()
+
+        except sqlite3.Error as error:
+
+            print(
+                "Database error:",
+                error
+            )
+
+            self.show_error(
+                "Unable to read health data."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # CLEAR TABLE
+        # ----------------------------------------------------
 
         for item in self.table.get_children():
 
             self.table.delete(
                 item
             )
+
+        # ----------------------------------------------------
+        # INSERT RECORDS
+        # ----------------------------------------------------
 
         for index, record in enumerate(records):
 
@@ -2012,19 +2297,27 @@ class HealthMonitor(ctk.CTk):
                 display_date = timestamp
 
             stress_text = (
-                "Yes" if stress else "No"
+                "Yes"
+                if stress
+                else "No"
             )
 
             meditation_text = (
-                "Yes" if meditation else "No"
+                "Yes"
+                if meditation
+                else "No"
             )
 
             heart_med_text = (
-                "Yes" if heart_medication else "No"
+                "Yes"
+                if heart_medication
+                else "No"
             )
 
             bp_med_text = (
-                "Yes" if bp_medication else "No"
+                "Yes"
+                if bp_medication
+                else "No"
             )
 
             row_tag = (
@@ -2064,34 +2357,49 @@ class HealthMonitor(ctk.CTk):
 
     def delete_last_record(self):
 
-        conn = sqlite3.connect(
-            DB_NAME
-        )
+        try:
 
-        cursor = conn.cursor()
+            conn = sqlite3.connect(
+                DB_NAME
+            )
 
-        cursor.execute("""
-            SELECT
-                id,
-                timestamp,
-                systolic,
-                diastolic,
-                heart_rate,
-                stress,
-                meditation,
-                heart_medication,
-                bp_medication,
-                heart_med_name,
-                bp_med_name,
-                daily_note,
-                exercise_duration,
-                sleep_duration
-            FROM health_records
-            ORDER BY id DESC
-            LIMIT 1
-        """)
+            cursor = conn.cursor()
 
-        record = cursor.fetchone()
+            cursor.execute("""
+                SELECT
+                    id,
+                    timestamp,
+                    systolic,
+                    diastolic,
+                    heart_rate,
+                    stress,
+                    meditation,
+                    heart_medication,
+                    bp_medication,
+                    heart_med_name,
+                    bp_med_name,
+                    daily_note,
+                    exercise_duration,
+                    sleep_duration
+                FROM health_records
+                ORDER BY id DESC
+                LIMIT 1
+            """)
+
+            record = cursor.fetchone()
+
+        except sqlite3.Error as error:
+
+            print(
+                "Database error:",
+                error
+            )
+
+            self.show_error(
+                "Unable to access the database."
+            )
+
+            return
 
         if record is None:
 
@@ -2122,7 +2430,6 @@ class HealthMonitor(ctk.CTk):
 
         answer = messagebox.askyesno(
             "Delete Last Record",
-
             (
                 "Are you sure you want to delete "
                 "the last saved record?\n\n"
@@ -2143,7 +2450,6 @@ class HealthMonitor(ctk.CTk):
                 f"Exercise: {exercise:g} minutes\n"
                 f"Sleep: {sleep:g} hours"
             ),
-
             icon="warning"
         )
 
@@ -2153,15 +2459,32 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        cursor.execute("""
-            DELETE FROM health_records
-            WHERE id = ?
-        """, (
-            record_id,
-        ))
+        try:
 
-        conn.commit()
-        conn.close()
+            cursor.execute("""
+                DELETE FROM health_records
+                WHERE id = ?
+            """, (
+                record_id,
+            ))
+
+            conn.commit()
+            conn.close()
+
+        except sqlite3.Error as error:
+
+            conn.close()
+
+            print(
+                "Delete error:",
+                error
+            )
+
+            self.show_error(
+                "Unable to delete the record."
+            )
+
+            return
 
         self.show_success(
             "Last saved record deleted."
@@ -2196,10 +2519,6 @@ class HealthMonitor(ctk.CTk):
 
         window.grab_set()
 
-        # ----------------------------------------------------
-        # TITLE
-        # ----------------------------------------------------
-
         title = ctk.CTkLabel(
             window,
             text="Select Data Columns",
@@ -2229,10 +2548,6 @@ class HealthMonitor(ctk.CTk):
             pady=(0, 20)
         )
 
-        # ----------------------------------------------------
-        # CHECKBOX CONTAINER
-        # ----------------------------------------------------
-
         checkbox_frame = ctk.CTkScrollableFrame(
             window,
             fg_color="#F8FAFC",
@@ -2245,10 +2560,6 @@ class HealthMonitor(ctk.CTk):
             padx=25,
             pady=5
         )
-
-        # ----------------------------------------------------
-        # ALL AVAILABLE COLUMNS
-        # ----------------------------------------------------
 
         available_columns = [
             "Date / Time",
@@ -2382,7 +2693,8 @@ class HealthMonitor(ctk.CTk):
 
             selected = [
                 column
-                for column, variable in column_vars.items()
+                for column, variable
+                in column_vars.items()
                 if variable.get()
             ]
 
@@ -2402,7 +2714,8 @@ class HealthMonitor(ctk.CTk):
 
             self.status_label.configure(
                 text=(
-                    f"✓  {len(selected)} export column(s) selected."
+                    f"✓  {len(selected)} "
+                    "export column(s) selected."
                 ),
                 text_color=COLORS["success_text"]
             )
@@ -2441,45 +2754,134 @@ class HealthMonitor(ctk.CTk):
 
             return
 
-        conn = sqlite3.connect(
-            DB_NAME
+        # ----------------------------------------------------
+        # GET DATE RANGE
+        # ----------------------------------------------------
+
+        start_datetime, end_datetime = (
+            self.get_report_date_range()
         )
 
-        cursor = conn.cursor()
+        # ----------------------------------------------------
+        # VALIDATE REPORT PERIOD
+        # ----------------------------------------------------
 
-        cursor.execute("""
-            SELECT
-                timestamp,
-                systolic,
-                diastolic,
-                heart_rate,
-                stress,
-                meditation,
-                heart_medication,
-                bp_medication,
-                heart_med_name,
-                bp_med_name,
-                daily_note,
-                exercise_duration,
-                sleep_duration
-            FROM health_records
-            ORDER BY timestamp DESC
-        """)
-
-        records = cursor.fetchall()
-
-        conn.close()
-
-        if not records:
+        if self.report_period == "None":
 
             self.show_error(
-                "There is no data available to export."
+                "Please select a report duration."
             )
 
             return
 
         # ----------------------------------------------------
-        # DATABASE INDEX
+        # VALIDATE CUSTOM RANGE
+        # ----------------------------------------------------
+
+        if self.report_period == "Custom":
+
+            if (
+                not start_datetime
+                or not end_datetime
+            ):
+
+                self.show_error(
+                    "Please select a valid custom date range."
+                )
+
+                return
+
+        # ----------------------------------------------------
+        # DATABASE
+        # ----------------------------------------------------
+
+        try:
+
+            conn = sqlite3.connect(
+                DB_NAME
+            )
+
+            cursor = conn.cursor()
+
+            base_query = """
+                SELECT
+                    timestamp,
+                    systolic,
+                    diastolic,
+                    heart_rate,
+                    stress,
+                    meditation,
+                    heart_medication,
+                    bp_medication,
+                    heart_med_name,
+                    bp_med_name,
+                    daily_note,
+                    exercise_duration,
+                    sleep_duration
+                FROM health_records
+            """
+
+            # ------------------------------------------------
+            # ALL RECORDS
+            # ------------------------------------------------
+
+            if self.report_period == "All":
+
+                cursor.execute(
+                    base_query + """
+                        ORDER BY timestamp DESC
+                    """
+                )
+
+            # ------------------------------------------------
+            # FILTERED RECORDS
+            # ------------------------------------------------
+
+            else:
+
+                cursor.execute(
+                    base_query + """
+                        WHERE timestamp >= ?
+                        AND timestamp <= ?
+                        ORDER BY timestamp DESC
+                    """,
+                    (
+                        start_datetime,
+                        end_datetime
+                    )
+                )
+
+            records = cursor.fetchall()
+
+            conn.close()
+
+        except sqlite3.Error as error:
+
+            print(
+                "Database error:",
+                error
+            )
+
+            self.show_error(
+                "Unable to read health data from database."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # NO DATA
+        # ----------------------------------------------------
+
+        if not records:
+
+            self.show_error(
+                f"No health data found for {self.report_period}."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # DATABASE COLUMN INDEXES
         # ----------------------------------------------------
 
         column_indexes = {
@@ -2499,7 +2901,7 @@ class HealthMonitor(ctk.CTk):
         }
 
         # ----------------------------------------------------
-        # PREPARE DATA
+        # PREPARE EXPORT DATA
         # ----------------------------------------------------
 
         export_data_rows = []
@@ -2553,6 +2955,7 @@ class HealthMonitor(ctk.CTk):
                         )
 
                     except ValueError:
+
                         pass
 
                 elif value is None:
@@ -2568,487 +2971,52 @@ class HealthMonitor(ctk.CTk):
             )
 
         # ----------------------------------------------------
-        # FORMAT
+        # EXPORT FORMAT
         # ----------------------------------------------------
 
-        export_format = self.export_format_var.get()
-
-        if export_format == "PDF":
-
-            self.export_pdf(
-                export_data_rows
-            )
-
-        elif export_format == "Excel":
-
-            self.export_excel(
-                export_data_rows
-            )
-
-    # ========================================================
-    # EXPORT EXCEL
-    # ========================================================
-
-    def export_excel(
-        self,
-        data
-    ):
-
-        filename = datetime.now().strftime(
-            "health_data_%Y%m%d_%H%M%S.xlsx"
+        export_format = (
+            self.export_format_var.get()
         )
-
-        filepath = filedialog.asksaveasfilename(
-            title="Export Health Data to Excel",
-            defaultextension=".xlsx",
-            initialfile=filename,
-            filetypes=[
-                (
-                    "Excel files",
-                    "*.xlsx"
-                ),
-                (
-                    "All files",
-                    "*.*"
-                )
-            ]
-        )
-
-        if not filepath:
-            return
 
         try:
 
-            workbook = Workbook()
+            if export_format == "PDF":
 
-            sheet = workbook.active
-
-            sheet.title = "Heart Health Data"
-
-            # ------------------------------------------------
-            # HEADER
-            # ------------------------------------------------
-
-            for column_index, column_name in enumerate(
-                self.export_columns,
-                start=1
-            ):
-
-                cell = sheet.cell(
-                    row=1,
-                    column=column_index,
-                    value=column_name
+                export_pdf(
+                    export_data_rows,
+                    self.export_columns
                 )
 
-                cell.font = Font(
-                    bold=True,
-                    color="FFFFFF"
-                )
-
-                cell.fill = PatternFill(
-                    start_color="0F172A",
-                    end_color="0F172A",
-                    fill_type="solid"
-                )
-
-                cell.alignment = Alignment(
-                    horizontal="center",
-                    vertical="center"
-                )
-
-            # ------------------------------------------------
-            # DATA
-            # ------------------------------------------------
-
-            for row_index, row_data in enumerate(
-                data,
-                start=2
-            ):
-
-                for column_index, value in enumerate(
-                    row_data,
-                    start=1
-                ):
-
-                    cell = sheet.cell(
-                        row=row_index,
-                        column=column_index,
-                        value=value
+                self.show_success(
+                    (
+                        "Health report exported successfully "
+                        f"to PDF ({self.report_period})."
                     )
+                )
 
-                    cell.alignment = Alignment(
-                        horizontal="center",
-                        vertical="center",
-                        wrap_text=True
+            elif export_format == "Excel":
+
+                export_excel(
+                    export_data_rows,
+                    self.export_columns
+                )
+
+                self.show_success(
+                    (
+                        "Health report exported successfully "
+                        f"to Excel ({self.report_period})."
                     )
-
-            # ------------------------------------------------
-            # WIDTH
-            # ------------------------------------------------
-
-            for column_cells in sheet.columns:
-
-                max_length = 0
-
-                column_letter = (
-                    column_cells[0].column_letter
                 )
-
-                for cell in column_cells:
-
-                    if cell.value is not None:
-
-                        max_length = max(
-                            max_length,
-                            len(str(cell.value))
-                        )
-
-                sheet.column_dimensions[
-                    column_letter
-                ].width = min(
-                    max_length + 3,
-                    40
-                )
-
-            sheet.freeze_panes = "A2"
-
-            sheet.auto_filter.ref = sheet.dimensions
-
-            workbook.save(
-                filepath
-            )
-
-            self.show_success(
-                "Health data exported successfully to Excel."
-            )
 
         except Exception as error:
 
             print(
-                "Excel export error:",
+                "Export error:",
                 error
             )
 
             self.show_error(
-                "Unable to create the Excel file."
-            )
-
-    # ========================================================
-    # EXPORT PDF
-    # ========================================================
-
-    def export_pdf(
-        self,
-        data
-    ):
-
-        filename = datetime.now().strftime(
-            "health_data_%Y%m%d_%H%M%S.pdf"
-        )
-
-        filepath = filedialog.asksaveasfilename(
-            title="Export Health Data to PDF",
-            defaultextension=".pdf",
-            initialfile=filename,
-            filetypes=[
-                (
-                    "PDF files",
-                    "*.pdf"
-                ),
-                (
-                    "All files",
-                    "*.*"
-                )
-            ]
-        )
-
-        if not filepath:
-            return
-
-        try:
-
-            document = SimpleDocTemplate(
-                filepath,
-                pagesize=landscape(A4),
-                rightMargin=25,
-                leftMargin=25,
-                topMargin=25,
-                bottomMargin=25
-            )
-
-            styles = getSampleStyleSheet()
-
-            # =================================================
-            # TITLE
-            # =================================================
-
-            title_style = styles["Title"]
-
-            title = Paragraph(
-                "Heart Health Monitor",
-                title_style
-            )
-
-            subtitle = Paragraph(
-                (
-                    "Health Data Export — "
-                    f"{datetime.now().strftime('%d %B %Y, %I:%M %p')}"
-                ),
-                styles["Normal"]
-            )
-
-            # =================================================
-            # WHITE HEADER STYLE
-            # =================================================
-
-            header_style = styles["Normal"].clone(
-                "ExportHeaderStyle"
-            )
-
-            header_style.fontName = "Helvetica-Bold"
-            header_style.fontSize = 7
-            header_style.textColor = colors.white
-            header_style.alignment = 1
-            header_style.leading = 9
-
-            # =================================================
-            # DATA STYLE
-            # =================================================
-
-            data_style = styles["Normal"].clone(
-                "ExportDataStyle"
-            )
-
-            data_style.fontName = "Helvetica"
-            data_style.fontSize = 7
-            data_style.textColor = colors.HexColor(
-                "#172033"
-            )
-            data_style.alignment = 1
-            data_style.leading = 9
-
-            # =================================================
-            # TABLE DATA
-            # =================================================
-
-            table_data = []
-
-            # -------------------------------------------------
-            # HEADER
-            # -------------------------------------------------
-
-            header_row = []
-
-            for column_name in self.export_columns:
-
-                header_row.append(
-                    Paragraph(
-                        str(column_name),
-                        header_style
-                    )
-                )
-
-            table_data.append(
-                header_row
-            )
-
-            # -------------------------------------------------
-            # DATA
-            # -------------------------------------------------
-
-            for row in data:
-
-                formatted_row = []
-
-                for value in row:
-
-                    formatted_row.append(
-                        Paragraph(
-                            str(value),
-                            data_style
-                        )
-                    )
-
-                table_data.append(
-                    formatted_row
-                )
-
-            # =================================================
-            # TABLE
-            # =================================================
-
-            table = Table(
-                table_data,
-                repeatRows=1
-            )
-
-            table.setStyle(
-                TableStyle([
-
-                    # ------------------------------------------------
-                    # DARK HEADER
-                    # ------------------------------------------------
-
-                    (
-                        "BACKGROUND",
-                        (0, 0),
-                        (-1, 0),
-                        colors.HexColor("#0F172A")
-                    ),
-
-                    # ------------------------------------------------
-                    # WHITE HEADER TEXT
-                    # ------------------------------------------------
-
-                    (
-                        "TEXTCOLOR",
-                        (0, 0),
-                        (-1, 0),
-                        colors.white
-                    ),
-
-                    (
-                        "FONTNAME",
-                        (0, 0),
-                        (-1, 0),
-                        "Helvetica-Bold"
-                    ),
-
-                    (
-                        "FONTSIZE",
-                        (0, 0),
-                        (-1, 0),
-                        7
-                    ),
-
-                    # ------------------------------------------------
-                    # DATA TEXT
-                    # ------------------------------------------------
-
-                    (
-                        "TEXTCOLOR",
-                        (0, 1),
-                        (-1, -1),
-                        colors.HexColor("#172033")
-                    ),
-
-                    (
-                        "FONTNAME",
-                        (0, 1),
-                        (-1, -1),
-                        "Helvetica"
-                    ),
-
-                    (
-                        "FONTSIZE",
-                        (0, 1),
-                        (-1, -1),
-                        7
-                    ),
-
-                    # ------------------------------------------------
-                    # ALIGNMENT
-                    # ------------------------------------------------
-
-                    (
-                        "ALIGN",
-                        (0, 0),
-                        (-1, -1),
-                        "CENTER"
-                    ),
-
-                    (
-                        "VALIGN",
-                        (0, 0),
-                        (-1, -1),
-                        "MIDDLE"
-                    ),
-
-                    # ------------------------------------------------
-                    # GRID
-                    # ------------------------------------------------
-
-                    (
-                        "GRID",
-                        (0, 0),
-                        (-1, -1),
-                        0.5,
-                        colors.HexColor("#CBD5E1")
-                    ),
-
-                    # ------------------------------------------------
-                    # ALTERNATING ROW COLORS
-                    # ------------------------------------------------
-
-                    (
-                        "ROWBACKGROUNDS",
-                        (0, 1),
-                        (-1, -1),
-                        [
-                            colors.white,
-                            colors.HexColor("#F8FAFC")
-                        ]
-                    ),
-
-                    # ------------------------------------------------
-                    # PADDING
-                    # ------------------------------------------------
-
-                    (
-                        "TOPPADDING",
-                        (0, 0),
-                        (-1, -1),
-                        6
-                    ),
-
-                    (
-                        "BOTTOMPADDING",
-                        (0, 0),
-                        (-1, -1),
-                        6
-                    ),
-
-                    (
-                        "LEFTPADDING",
-                        (0, 0),
-                        (-1, -1),
-                        5
-                    ),
-
-                    (
-                        "RIGHTPADDING",
-                        (0, 0),
-                        (-1, -1),
-                        5
-                    )
-                ])
-            )
-
-            # =================================================
-            # BUILD PDF
-            # =================================================
-
-            document.build([
-                title,
-                Spacer(1, 8),
-                subtitle,
-                Spacer(1, 15),
-                table
-            ])
-
-            self.show_success(
-                "Health data exported successfully to PDF."
-            )
-
-        except Exception as error:
-
-            print(
-                "PDF export error:",
-                error
-            )
-
-            self.show_error(
-                "Unable to create the PDF file."
+                f"Unable to create the {export_format} file."
             )
 
     # ========================================================

@@ -1496,6 +1496,9 @@ class HealthMonitor(ctk.CTk):
             fg_color="#F8FAFC",
             corner_radius=12
         )
+        export_frame.grid_columnconfigure(0, weight=1)
+        export_frame.grid_columnconfigure(6, weight=1)
+
 
         export_frame.grid(
             row=3,

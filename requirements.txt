@@ -1,3 +1,4 @@
 customtkinter
 openpyxl
 reportlab
+matplotlib

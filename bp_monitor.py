@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from export import export_pdf, export_excel
 from export.report_period import ReportPeriodSelector
+from advance_export import export_advanced_insights
 
 
 # ============================================================
@@ -422,6 +423,41 @@ class HealthMonitor(ctk.CTk):
         date_label.pack(
             side="right"
         )
+
+
+    # ========================================================
+    # EXPORT ADVANCED INSIGHTS
+    # ========================================================
+
+    def export_advanced_insights(self):
+        """Export the advanced blood pressure insights report."""
+
+        period = self.insights_period_var.get()
+
+        if period in (
+            "Select Period",
+            "Report Duration",
+            ""
+        ):
+            self.show_error(
+                "Please select a duration for advanced insights."
+            )
+            return
+
+        try:
+            export_advanced_insights(
+                self,
+                DB_NAME,
+                period
+            )
+
+        except Exception as error:
+            print("Advanced insights export error:", error)
+
+            self.show_error(
+                "Unable to export advanced insights. "
+                "Check the terminal for details."
+            )
 
     # ========================================================
     # SCROLLABLE MAIN AREA
@@ -1676,6 +1712,170 @@ class HealthMonitor(ctk.CTk):
             column=5,
             padx=(5, 20),
             pady=10
+        )
+        # ====================================================
+        # ADVANCED INSIGHTS EXPORT SECTION
+        # ====================================================
+
+        insights_frame = ctk.CTkFrame(
+            card,
+            fg_color="#F8FAFC",
+            corner_radius=12
+        )
+
+        insights_frame.grid_columnconfigure(
+            0,
+            weight=1
+        )
+
+        insights_frame.grid_columnconfigure(
+            4,
+            weight=1
+        )
+
+        insights_frame.grid(
+            row=4,
+            column=0,
+            sticky="ew",
+            padx=35,
+            pady=(0, 30)
+        )
+
+        # ----------------------------------------------------
+        # SECTION TITLE
+        # ----------------------------------------------------
+
+        insights_title = ctk.CTkLabel(
+            insights_frame,
+            text="Export Advanced Insights",
+            text_color=COLORS["text"],
+            font=(
+                "Segoe UI",
+                15,
+                "bold"
+            )
+        )
+
+        insights_title.grid(
+            row=0,
+            column=0,
+            columnspan=5,
+            sticky="w",
+            padx=20,
+            pady=(18, 2)
+        )
+
+        insights_description = ctk.CTkLabel(
+            insights_frame,
+            text=(
+                "Export an advanced health insights report "
+                "for the selected period."
+            ),
+            text_color=COLORS["muted"],
+            font=(
+                "Segoe UI",
+                12
+            )
+        )
+
+        insights_description.grid(
+            row=1,
+            column=0,
+            columnspan=5,
+            sticky="w",
+            padx=20,
+            pady=(0, 12)
+        )
+
+        # ----------------------------------------------------
+        # DURATION LABEL
+        # ----------------------------------------------------
+
+        insights_duration_label = ctk.CTkLabel(
+            insights_frame,
+            text="Duration:",
+            text_color=COLORS["text"],
+            font=(
+                "Segoe UI",
+                13,
+                "bold"
+            )
+        )
+
+        insights_duration_label.grid(
+            row=2,
+            column=1,
+            padx=(20, 5),
+            pady=(5, 18)
+        )
+
+        # ----------------------------------------------------
+        # DURATION DROPDOWN
+        # ----------------------------------------------------
+
+        self.insights_period_var = tk.StringVar(
+            value="Report Duration"
+        )
+
+        self.insights_period_button = ctk.CTkOptionMenu(
+            insights_frame,
+            variable=self.insights_period_var,
+            values=[
+                "Select Period",
+                "1 Week",
+                "2 Weeks",
+                "1 Month",
+                "2 Months",
+                "3 Months",
+                ],
+            width=160,
+            height=40,
+            corner_radius=8,
+            fg_color="#64748B",
+            button_color="#64748B",
+            button_hover_color="#475569",
+            dropdown_fg_color="white",
+            dropdown_hover_color="#DBEAFE",
+            text_color="white",
+            font=(
+                "Segoe UI",
+                13,
+                "bold"
+            )
+        )
+
+        self.insights_period_button.grid(
+            row=2,
+            column=2,
+            padx=5,
+            pady=(5, 18)
+        )
+
+        # ----------------------------------------------------
+        # EXPORT BUTTON
+        # ----------------------------------------------------
+
+        insights_export_button = ctk.CTkButton(
+            insights_frame,
+            text="Export",
+            command=self.export_advanced_insights,
+            width=120,
+            height=40,
+            corner_radius=8,
+            fg_color=COLORS["green"],
+            hover_color=COLORS["green_hover"],
+            font=(
+                "Segoe UI",
+                13,
+                "bold"
+            )
+        )
+
+        insights_export_button.grid(
+            row=2,
+            column=3,
+            padx=(8, 20),
+            pady=(5, 18)
         )
 
     # ========================================================

@@ -619,12 +619,12 @@ def _build_pdf(
     story.append(Spacer(1, 5 * mm))
 
     # Sleep and blood-pressure comparison chart.
-    story.append(
-        Paragraph(
-            "Sleep Duration vs Blood Pressure",
-            styles["SectionTitle"],
-        )
-    )
+   # story.append(
+       # Paragraph(
+           # "Sleep Duration vs Blood Pressure",
+           # styles["SectionTitle"],
+     #   )
+   # )
 
     sleep_chart = Image(
         sleep_chart_path,

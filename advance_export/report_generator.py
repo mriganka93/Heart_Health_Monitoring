@@ -54,7 +54,7 @@ GROUP_DAYS = {
 
 
 def _make_chart(points, period, output_path):
-    """Create the systolic/diastolic time-series chart."""
+    """Create the blood-pressure trend chart with matching date groups."""
 
     fig, ax = plt.subplots(figsize=(10.5, 4.5))
     fig.patch.set_facecolor("#FFFFFF")
@@ -64,6 +64,7 @@ def _make_chart(points, period, output_path):
     systolic = [point["systolic"] for point in points]
     diastolic = [point["diastolic"] for point in points]
 
+    # Plot blood pressure curves.
     ax.plot(
         times,
         systolic,
@@ -93,7 +94,7 @@ def _make_chart(points, period, output_path):
         pad=16,
     )
 
-    ax.set_xlabel("Date / Time", color="#475569", labelpad=10)
+    ax.set_xlabel("Date", color="#475569", labelpad=10)
     ax.set_ylabel("Pressure (mmHg)", color="#475569", labelpad=10)
 
     ax.grid(
@@ -111,15 +112,44 @@ def _make_chart(points, period, output_path):
 
     ax.tick_params(axis="both", colors="#64748B", labelsize=9)
 
-    if len(times) > 1:
-        locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
-        ax.xaxis.set_major_locator(locator)
+    # --------------------------------------------------------
+    # MATCH X-AXIS DATE GROUPING WITH SLEEP VS BP GRAPH
+    # --------------------------------------------------------
+
+    group_days = GROUP_DAYS[period]
+
+    if times:
+
+        start_date = min(times).date()
+
+        # Use the same group boundaries as the sleep/BP chart.
+        tick_dates = []
+
+        for point in points:
+            point_date = point["timestamp"].date()
+
+            elapsed_days = (point_date - start_date).days
+
+            group_start = start_date + timedelta(
+                days=(elapsed_days // group_days) * group_days
+            )
+
+            if group_start not in tick_dates:
+                tick_dates.append(group_start)
+
+        ax.set_xticks([
+            datetime.combine(date, datetime.min.time())
+            for date in tick_dates
+        ])
+
         ax.xaxis.set_major_formatter(
-            mdates.ConciseDateFormatter(locator)
+            mdates.DateFormatter("%d %b")
         )
-    else:
-        ax.xaxis.set_major_formatter(
-            mdates.DateFormatter("%d %b %H:%M")
+
+        ax.tick_params(
+            axis="x",
+            rotation=30,
+            labelsize=9,
         )
 
     ax.legend(
@@ -130,13 +160,17 @@ def _make_chart(points, period, output_path):
     )
 
     fig.tight_layout()
+
     fig.savefig(
         output_path,
         dpi=200,
         bbox_inches="tight",
         facecolor="white",
     )
+
     plt.close(fig)
+
+
 
 
 def _make_sleep_bp_chart(db_path, period, start, end, output_path):
@@ -417,7 +451,7 @@ def _build_pdf(
     points,
     chart_path,
     sleep_chart_path,
-):
+    ):
     """Build the advanced insights PDF."""
 
     document = SimpleDocTemplate(
